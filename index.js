@@ -37,6 +37,7 @@ app.listen(port, function() {
 const client = process.env['MONGO_URI']
 
 mongoose.connect(client,{useNewUrlParser: true, useUnifiedTopology: true})
+mongoose.set('useFindAndModify', false);
 
 const urlShortSchema = new mongoose.Schema({
   original: {
@@ -63,7 +64,7 @@ app.post("/api/shorturl/new", bodyParser.urlencoded({ extended: false }),(req, r
   //generating the shorturl
   //finding max shorturl number and incrementing by 1
   urlShortner.findOne({})
-    .sort({short:'desc'}) //sorting by descending, so first short will be highest
+    .sort({short_url:'desc'}) //sorting by descending, so first short will be highest
     .exec((error,result)=>{ //executing
       if(!error && result != undefined){ //if no error and the result is not undf
         inputShort = result.short_url + 1 //taking the result with key short and incrementing
@@ -86,9 +87,15 @@ app.post("/api/shorturl/new", bodyParser.urlencoded({ extended: false }),(req, r
 
 app.get("/api/shorturl/:inputShort", (req,res)=>{
   let inputShort = req.params.inputShort
-  urlShortner.findOne({short:inputShort}, (error,result)=>{ //finding in our db where short = inputshort
+  urlShortner.findOne({short_url:inputShort}, (error,result)=>{ //finding in our db where short = inputshort
     if(!error && result != undefined){
-      res.redirect(result.original) //redirecting to the original key of the resulting findOne query
+      let redirectTo = result.original
+
+      if (!/^https?:\/\//i.test(redirectTo)) {
+        redirectTo = 'http://' + redirectTo; // Assuming http if no protocol is provided
+      }
+
+      res.redirect(redirectTo); //redirecting to the original key of the resulting findOne query
     }else{
       res.json({error: 'URL Does Not Exist'})
     }
